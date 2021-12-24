@@ -2,6 +2,7 @@ package kg.it.academy.OnlineBank.service.impl;
 
 import kg.it.academy.OnlineBank.dto.card.*;
 import kg.it.academy.OnlineBank.entity.Card;
+import kg.it.academy.OnlineBank.exceptions.ApiException;
 import kg.it.academy.OnlineBank.mappers.CardMapper;
 import kg.it.academy.OnlineBank.repository.CardRepository;
 import kg.it.academy.OnlineBank.repository.ClientRepository;
@@ -11,6 +12,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
@@ -26,15 +28,21 @@ public class CardServiceImpl implements CardService {
 
     @Override
     public CardResponseDto save(CardRequestDto cardRequestDto) {
-        Card card = CardMapper.INSTANCE.toCardEntity(cardRequestDto);
-        card.setClient(clientRepository.findById(cardRequestDto.getClientId()).get());
-
-        return CardMapper.INSTANCE.toCardResponseDto(cardRepository.save(card));
+        try {
+            Card card = CardMapper.INSTANCE.toCardEntity(cardRequestDto);
+            card.setClient(clientRepository.findById(cardRequestDto.getClientId()).get());
+            return CardMapper.INSTANCE.toCardResponseDto(cardRepository.save(card));
+        } catch (Exception ignored) {
+            throw new ApiException("Такая карта уже привязана за другим клиентом!", HttpStatus.BAD_REQUEST);
+        }
     }
 
     @Override
     public CardResponseDto checkCardAmount(Long cardNumber) {
-        return CardMapper.INSTANCE.toCardResponseDto(cardRepository.getCardByCardNumber(cardNumber));
+        Card card = cardRepository.getCardByCardNumber(cardNumber);
+        if (card == null)
+            throw new ApiException("Такой карты нету", HttpStatus.BAD_REQUEST);
+        return CardMapper.INSTANCE.toCardResponseDto(card);
     }
 
     @Override
